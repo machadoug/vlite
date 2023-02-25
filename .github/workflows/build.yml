@@ -46,6 +46,11 @@ jobs:
       - name: Build example
         run: npm run build:example
 
+      - name: Debug
+        run: |
+          echo "$github.ref"
+          echo "github.event_name"
+
       - name: Upload examples artifacts
         uses: actions/upload-artifact@v2
         if: github.ref != 'refs/heads/main' &&
