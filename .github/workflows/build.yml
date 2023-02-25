@@ -1,5 +1,9 @@
 name: Build
 
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 on:
   push:
     branches:
@@ -41,3 +45,41 @@ jobs:
 
       - name: Build example
         run: npm run build:example
+
+      - name: Upload examples artifacts
+        uses: actions/upload-artifact@v2
+        if: github.ref != 'refs/heads/main' &&
+            github.event_name == 'pull_request'
+        with:
+          name: preview
+          path: examples/dist
+
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: success() &&
+        github.ref != 'refs/heads/main' &&
+        github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download examples artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: preview
+          # The path is mandatory with actions/download-artifact@v2
+          # https://github.com/actions/download-artifact#compatibility-between-v1-and-v2
+          path: preview
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
